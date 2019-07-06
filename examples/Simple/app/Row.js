@@ -4,6 +4,7 @@ import React, {
 
 import {
   LayoutAnimation,
+  UIManager,
   View,
 } from 'react-native';
 
@@ -13,6 +14,22 @@ import InfoCard from './components/InfoCard';
 import PhotoCard from './components/PhotoCard';
 import ProfileCard from './components/ProfileCard';
 
+// Enable LayoutAnimation on Android
+if (UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const ROW_HEIGHT = 180;
+
+const Spacer = ({ height }) => (
+  <View
+    pointerEvents="none"
+    style={{
+      height,
+    }}
+  />
+);
+
 export default class Row extends Component {
 
   constructor(props) {
@@ -20,7 +37,7 @@ export default class Row extends Component {
 
     this.state = {
       expanded: false,
-      height: 180,
+      height: ROW_HEIGHT,
     };
   }
 
@@ -71,24 +88,34 @@ export default class Row extends Component {
     const { height } = this.state;
     const { zIndex } = this.props;
 
+    const spacerHeight = height - ROW_HEIGHT;
+
     return (
       <View
         style={{
-          height,
+          flex: 1,
           zIndex,
-          margin: 10,
         }}
       >
-        <FoldView
-          expanded={this.state.expanded}
-          onAnimatationStart={this.handleAnimationStart}
-          perspective={1000}
-          renderBackface={this.renderBackface}
-          renderFrontface={this.renderFrontface}
+        <View
+          style={{
+            height: ROW_HEIGHT,
+            margin: 10,
+          }}
         >
-          <PhotoCard onPress={this.flip} />
-        </FoldView>
+          <FoldView
+            expanded={this.state.expanded}
+            onAnimationStart={this.handleAnimationStart}
+            perspective={1000}
+            renderBackface={this.renderBackface}
+            renderFrontface={this.renderFrontface}
+          >
+            <PhotoCard onPress={this.flip} />
+          </FoldView>
 
+        </View>
+
+        <Spacer height={spacerHeight} />
       </View>
     );
   }

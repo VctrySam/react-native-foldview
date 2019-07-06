@@ -12,7 +12,7 @@ function transformOrigin(matrix, origin) {
   MatrixMath.multiplyInto(matrix, matrix, untranslate);
 }
 
-function rotateY(deg) {
+function rotateX(deg) {
   const rad = (Math.PI / 180) * deg;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
@@ -24,7 +24,16 @@ function rotateY(deg) {
   ];
 }
 
+function applyPerspective(matrix, value) {
+  const perspective = MatrixMath.createIdentityMatrix();
+  MatrixMath.reusePerspectiveCommand(perspective, value);
+  MatrixMath.multiplyInto(matrix, matrix, perspective);
+}
+
 export default {
-  rotateY,
+  rotateX,
+  applyPerspective,
+  createIdentityMatrix: MatrixMath.createIdentityMatrix,
+  multiplyInto: MatrixMath.multiplyInto,
   origin: transformOrigin,
 };

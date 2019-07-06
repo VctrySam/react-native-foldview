@@ -1,7 +1,8 @@
 import React, {
   Component,
-  PropTypes,
 } from 'react';
+
+import PropTypes from 'prop-types';
 
 import {
   View,
@@ -29,6 +30,7 @@ const styles = StyleSheet.create({
   },
 });
 
+/* eslint-disable no-restricted-syntax, no-await-in-loop */
 const rootDefaultProps = {
   collapse: async (foldViews) => {
     const reversedFoldViews = [...foldViews].reverse();
@@ -43,6 +45,7 @@ const rootDefaultProps = {
   },
   perspective: 1000,
 };
+/* eslint-enable */
 
 export default class FoldingCell extends Component {
 
@@ -64,8 +67,8 @@ export default class FoldingCell extends Component {
     collapse: PropTypes.func,
     expand: PropTypes.func,
     expanded: PropTypes.bool,
-    onAnimatationEnd: PropTypes.func,
-    onAnimatationStart: PropTypes.func,
+    onAnimationEnd: PropTypes.func,
+    onAnimationStart: PropTypes.func,
     perspective: PropTypes.number,
   };
 
@@ -77,8 +80,8 @@ export default class FoldingCell extends Component {
     super(props, context);
 
     this.state = {
-      rotateYfront: new Animated.Value(0),
-      rotateYback: new Animated.Value(-180),
+      rotateXfront: new Animated.Value(0),
+      rotateXback: new Animated.Value(-180),
       baseLayout: null,
       rasterize: false,
     };
@@ -120,8 +123,8 @@ export default class FoldingCell extends Component {
         'collapse',
         'expand',
         'expanded',
-        'onAnimatationEnd',
-        'onAnimatationStart',
+        'onAnimationEnd',
+        'onAnimationStart',
         'perspective',
       ];
 
@@ -134,17 +137,17 @@ export default class FoldingCell extends Component {
 
       invariant(
         invalidProps.length === 0,
-        `${invalidProps.join(', ')} cannot be set on a nested FoldView`
+        `${invalidProps.join(', ')} cannot be set on a nested FoldView`,
       );
     }
   }
 
   componentDidMount() {
-    this.state.rotateYfront.addListener(({ value }) => {
+    this.state.rotateXfront.addListener(({ value }) => {
       this.flushTransform(this.frontFaceRef, value, this.state.frontFaceOriginY);
     });
 
-    this.state.rotateYback.addListener(({ value }) => {
+    this.state.rotateXback.addListener(({ value }) => {
       this.flushTransform(this.backFaceRef, value, this.state.backFaceOriginY);
     });
 
@@ -204,19 +207,20 @@ export default class FoldingCell extends Component {
     return this.props.flipDuration;
   }
 
-  flushTransform(ref, dy, y) {
+  flushTransform(ref, dx, y) {
     // Matrix multiplication is not commutative
-    const matrix = transformUtil.rotateY(dy);
+    const matrix = transformUtil.createIdentityMatrix();
+    const rotate = transformUtil.rotateX(dx);
     transformUtil.origin(matrix, { x: 0, y, z: 0 });
-
-    const perspective = this.props.perspective || rootDefaultProps.perspective;
+    transformUtil.applyPerspective(
+      matrix,
+      this.props.perspective || rootDefaultProps.perspective,
+    );
+    transformUtil.multiplyInto(matrix, matrix, rotate);
 
     ref.setNativeProps({
       style: {
         transform: [
-          {
-            perspective,
-          },
           {
             matrix,
           },
@@ -229,11 +233,11 @@ export default class FoldingCell extends Component {
     const duration = this.props.flipDuration;
 
     const animations = Animated.parallel([
-      Animated.timing(this.state.rotateYfront, {
+      Animated.timing(this.state.rotateXfront, {
         toValue: 180,
         duration,
       }),
-      Animated.timing(this.state.rotateYback, {
+      Animated.timing(this.state.rotateXback, {
         toValue: 0,
         duration,
       }),
@@ -246,11 +250,11 @@ export default class FoldingCell extends Component {
     const duration = this.props.flipDuration;
 
     const animations = Animated.parallel([
-      Animated.timing(this.state.rotateYfront, {
+      Animated.timing(this.state.rotateXfront, {
         toValue: 0,
         duration,
       }),
-      Animated.timing(this.state.rotateYback, {
+      Animated.timing(this.state.rotateXback, {
         toValue: -180,
         duration,
       }),
@@ -274,25 +278,27 @@ export default class FoldingCell extends Component {
 
     const totalDuration = this.managedComponents.reduce(
       (total, pseudoRef) => total + pseudoRef.getFlipDuration(),
-      0
+      0,
     );
 
     let height = this.state.baseLayout.height;
     if (expanded) {
       height = this.managedComponents.reduce(
         (total, pseudoRef) => total + pseudoRef.getBaseHeight(),
-        height
+        height,
       );
     }
 
-    if (this.props.onAnimatationStart) {
-      this.props.onAnimatationStart(totalDuration, height);
+    if (this.props.onAnimationStart) {
+      this.props.onAnimationStart(totalDuration, height);
     }
 
     if (expanded) {
+      /* eslint-disable no-restricted-syntax, no-await-in-loop */
       for (const pseudoRef of this.managedComponents) {
         await pseudoRef.rasterize(true);
       }
+      /* eslint-enable */
 
       const expand = this.props.expand || rootDefaultProps.expand;
       await expand(this.managedComponents);
@@ -301,13 +307,15 @@ export default class FoldingCell extends Component {
       await collapse(this.managedComponents);
 
       // Conserve memory by turning off rasterization on collapse
+      /* eslint-disable no-restricted-syntax, no-await-in-loop */
       for (const pseudoRef of this.managedComponents) {
         await pseudoRef.rasterize(false);
       }
+      /* eslint-enable */
     }
 
-    if (this.props.onAnimatationEnd) {
-      this.props.onAnimatationEnd(totalDuration, height);
+    if (this.props.onAnimationEnd) {
+      this.props.onAnimationEnd(totalDuration, height);
     }
   }
 
@@ -322,17 +330,17 @@ export default class FoldingCell extends Component {
       this.flushTransform(
         this.frontFaceRef,
         /* eslint-disable no-underscore-dangle */
-        this.state.rotateYfront.__getValue(),
+        this.state.rotateXfront.__getValue(),
         /* eslint-enable */
-        this.state.frontFaceOriginY
+        this.state.frontFaceOriginY,
       );
 
       this.flushTransform(
         this.backFaceRef,
         /* eslint-disable no-underscore-dangle */
-        this.state.rotateYback.__getValue(),
+        this.state.rotateXback.__getValue(),
         /* eslint-enable */
-        this.state.backFaceOriginY
+        this.state.backFaceOriginY,
       );
     });
   }
@@ -417,14 +425,15 @@ export default class FoldingCell extends Component {
     if (this.isRoot && !this.state.baseLayout) {
       // Unless `renderLoading` is provided, temporarily render `frontFace` as placeholder
       // to avoid shutter when layout is done.
-      const renderPalceholder = this.props.renderLoading || this.props.renderFrontface;
-      if (renderPalceholder) {
-        children = renderPalceholder();
+      const renderPlaceholder = this.props.renderLoading || this.props.renderFrontface;
+      if (renderPlaceholder) {
+        children = renderPlaceholder();
       }
     }
 
     const baseStyle = this.state.baseLayout ? {
       height: this.state.baseLayout.height,
+      flex: 1,
     } : styles.base;
 
     return (
@@ -433,7 +442,7 @@ export default class FoldingCell extends Component {
         onLayout={this.handleBaseLayout}
         style={baseStyle}
       >
-        { children }
+        {children}
       </View>
     );
   }
@@ -441,9 +450,9 @@ export default class FoldingCell extends Component {
   render() {
     return (
       <View style={styles.container}>
-        { this.renderBase() }
-        { this.renderBackface() }
-        { this.renderFrontface() }
+        {this.renderBase()}
+        {this.renderBackface()}
+        {this.renderFrontface()}
       </View>
     );
   }
